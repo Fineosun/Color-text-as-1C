@@ -1,0 +1,464 @@
+function onOpen(e) {
+  var menu = DocumentApp.getUi().createAddonMenu(); 
+  if (e && e.authMode == ScriptApp.AuthMode.NONE) {
+ 
+    menu.addItem('Color Text As 1С', 'colorText');
+  } else {
+  
+      menu.addItem('Color Text As 1С', 'colorText');
+
+  }
+  menu.addToUi();
+}
+
+function cutSpaces(str) {
+  var str1 = str.replace(new RegExp(" ",'g'),"");
+  var str2 = str1.replace(new RegExp("\t",'g'),"");
+  var str3 = str2.replace(new RegExp("\b",'g'),"");
+  var str4 = str3.replace(new RegExp("\f",'g'),"");
+  var result = str4.replace(new RegExp("\r",'g'),"");
+ // var result = str5.replace(new RegExp("\n",'g'),"");
+  
+  return result;
+}
+
+function getBlackSym() {
+  var arrBlackSym = [];
+  arrBlackSym[0] = "/";
+//  arrBlackSym[1] = "\";
+  arrBlackSym[2] = "|";
+  arrBlackSym[3] = "'";
+  arrBlackSym[4] = "#";
+  arrBlackSym[5] = "@";
+  arrBlackSym[6] = '"';
+  arrBlackSym[7] = "&";        
+  
+  
+  return arrBlackSym;
+}
+
+
+function getKeyWords() {
+  var arrKeyWords = [];
+    arrKeyWords[0] = "процедура";
+    arrKeyWords[1] = "конецпроцедуры";
+    arrKeyWords[2] = "функция";
+    arrKeyWords[3] = "конецфункции";
+    arrKeyWords[4] = "если";
+    arrKeyWords[5] = "конецесли";
+    arrKeyWords[6] = "тогда";
+    arrKeyWords[7] = "иначе";
+    arrKeyWords[8] = "для";
+    arrKeyWords[9] = "каждого";
+    arrKeyWords[10] = "по";
+    arrKeyWords[11] = "цикл";
+    arrKeyWords[12] = "пока";
+    arrKeyWords[13] = "конеццикла";
+    arrKeyWords[14] = "попытка";
+    arrKeyWords[15] = "исключение";
+    arrKeyWords[16] = "конецпопытки";
+    arrKeyWords[17] = "экспорт";
+    arrKeyWords[18] = "ложь";
+    arrKeyWords[19] = "истина";
+    arrKeyWords[20] = "неопределено";
+    arrKeyWords[21] = "возврат";
+    arrKeyWords[22] = "знач";
+    arrKeyWords[23] = "иначеесли";
+    arrKeyWords[24] = "новый";
+    arrKeyWords[25] = "и";
+    arrKeyWords[26] = "или";
+    arrKeyWords[27] = "не";
+
+  
+  
+  return arrKeyWords;  
+}
+
+function getKeySymbols() {
+  var arrKeySymbols = [];
+    arrKeySymbols[0] = ")";
+    arrKeySymbols[1] = "(";
+    arrKeySymbols[2] = ";";
+    arrKeySymbols[3] = "[";
+    arrKeySymbols[4] = "]";
+    arrKeySymbols[5] = ",";
+    arrKeySymbols[6] = "=";
+    arrKeySymbols[7] = ".";
+  return arrKeySymbols;
+   
+}
+
+function getDiv() {
+  var arrDiv = [];
+    arrDiv[0] = ")";
+    arrDiv[1] = "(";
+    arrDiv[2] = ";";
+    arrDiv[3] = "[";
+    arrDiv[4] = "]";
+    arrDiv[5] = ",";
+    arrDiv[6] = "=";
+    arrDiv[7] = " ";
+    arrDiv[8] = "\n";
+    arrDiv[9] = "\b";
+    arrDiv[10] = "\f";
+    arrDiv[11] = "\r";
+    arrDiv[12] = "\t";
+    arrDiv[13] = ".";
+  return arrDiv;
+}
+
+function isSymbolDiv(sym) {
+  var arrDiv = getDiv();
+
+  for (var i = 0; i < arrDiv.length; i++) { 
+    if (sym == arrDiv[i]) return (true);
+  }
+  return (false);
+}
+
+function getPreProcessorCommand() {
+  var arrPPCommand = [];
+  arrPPCommand[0] = "";
+  arrPPCommand[1] = "";
+  arrPPCommand[2] = "";
+  arrPPCommand[3] = "";
+  arrPPCommand[4] = "";
+  arrPPCommand[5] = "";
+  
+ return arrPPCommand;
+  
+}
+
+
+ // функция, которая в каждом оставшемся синем кусочке ищет кавычки,
+ // открывающая кавычка может быть только после разделителя, закрывающая - где угодно.
+function findBlackText(blueString, text, styleBlack, blueZoneArray, currentDislocation, dislocationArr) {
+   
+  var result = "";
+  var firstTime = true;
+  var firstBluePos = 0;
+  var currentPos = 0;
+  var endPos;
+  while (true) {
+    var foundPos = blueString.indexOf('"',currentPos); //
+    if (foundPos >= 0){ 
+      currentPos = foundPos+1;
+      if (isSymbolDiv(blueString[foundPos-1])){ // это открывающая кавычка 
+
+        if (foundPos > firstBluePos) {
+          dislocationArr[blueZoneArray.length] = firstBluePos+currentDislocation;
+          blueZoneArray[blueZoneArray.length] =  blueString.substring(firstBluePos ,foundPos);
+
+          
+        }
+        endPos = blueString.indexOf('"',currentPos);
+        if (endPos < 0){ 
+          
+          endPos = blueString.length-1;
+          text.setAttributes(foundPos + currentDislocation, endPos + currentDislocation, styleBlack);
+          return;
+          
+        } else { // найдена закрывающая кавычка
+         
+          firstBluePos = endPos+1;
+          currentPos = endPos+1;
+          text.setAttributes(foundPos + currentDislocation, endPos + currentDislocation, styleBlack);
+          if (endPos == blueString.length-1){
+            return;
+          }
+        }
+        
+        firstTime = false;
+      }      
+    } else {
+      if (firstBluePos <= blueString.length-1) {
+        dislocationArr[blueZoneArray.length] = firstBluePos+currentDislocation;
+        blueZoneArray[blueZoneArray.length] =  blueString.substring(firstBluePos);
+      } 
+      return;
+      
+    }
+   
+  }
+}
+
+function getThisWord(blueString, foundPos, startPos, endPos){
+  var arrDiv = getDiv();
+  startPos = -1;
+  endPos = blueString.length;
+  for (var i = 0; i < arrDiv.length; i++) { 
+    var foundStartPos = blueString.lastIndexOf(arrDiv[i],foundPos);
+           if (foundStartPos >= 0){ 
+             if (foundStartPos > startPos){
+               startPos = foundStartPos;
+             }
+           }
+  }
+  if (startPos < 0){ 
+    startPos = -1;
+  }
+  for (var i = 0; i < arrDiv.length; i++) { 
+    var foundEndPos = blueString.indexOf(arrDiv[i],foundPos);
+           if (foundEndPos >= 0){ 
+             if (foundEndPos < endPos){
+               endPos = foundEndPos;
+             }
+           }
+  }
+  if (endPos < 0){ 
+    endPos = blueString.length;
+  }
+  var arrPos = [startPos,endPos];
+  return arrPos;
+}
+
+// это основная функция
+function colorText() {
+ 
+ var selection = DocumentApp.getActiveDocument().getSelection();
+  
+ if (selection) {
+
+   
+    var elements = selection.getRangeElements(); 
+   
+   // этот код добавляет (к сожалению, в конец текста) таблицу из одной ячейки с цветом фона светло-серый
+   var body = DocumentApp.getActiveDocument().getBody();
+   
+   var cells = [
+         ['']
+       ];
+
+   var newTable = body.appendTable(cells);
+       
+   newTable.appendTableRow();
+   var firstCell = newTable.getCell(0, 0);
+   firstCell.setBackgroundColor('#EFEFEF');
+   var text = firstCell.editAsText();
+   
+   var currentString, sourceText;
+   var arrKeyWords = getKeyWords();
+   var arrKeySymbols = getKeySymbols();
+
+   var tableParagraph = firstCell.appendParagraph("");
+   
+   
+   // это описание стилей
+   var styleBlue = {};
+   styleBlue[DocumentApp.Attribute.FOREGROUND_COLOR] = '#0000ff';
+   DocumentApp.HorizontalAlignment.RIGHT;
+   styleBlue[DocumentApp.Attribute.FONT_FAMILY] = 'Courier New';
+   styleBlue[DocumentApp.Attribute.FONT_SIZE] = 10;
+   styleBlue[DocumentApp.Attribute.BOLD] = true;
+   styleBlue[DocumentApp.Attribute.UNDERLINE] = false;
+   
+   var styleRed = {};
+   styleRed[DocumentApp.Attribute.FOREGROUND_COLOR] = '#ff0000';
+   DocumentApp.HorizontalAlignment.RIGHT;
+   styleRed[DocumentApp.Attribute.FONT_FAMILY] = 'Courier New';
+   styleRed[DocumentApp.Attribute.FONT_SIZE] = 10;
+   styleRed[DocumentApp.Attribute.BOLD] = true;
+   styleRed[DocumentApp.Attribute.UNDERLINE] = false;
+   
+   var styleBlack = {};
+   styleBlack[DocumentApp.Attribute.FOREGROUND_COLOR] = '#000000';
+   DocumentApp.HorizontalAlignment.RIGHT;
+   styleBlack[DocumentApp.Attribute.FONT_FAMILY] = 'Courier New';
+   styleBlack[DocumentApp.Attribute.FONT_SIZE] = 10;
+   styleBlack[DocumentApp.Attribute.BOLD] = true;
+   styleBlack[DocumentApp.Attribute.UNDERLINE] = false;
+   
+   var styleBrown = {};
+   styleBrown[DocumentApp.Attribute.FOREGROUND_COLOR] = '#963200';
+   DocumentApp.HorizontalAlignment.RIGHT;
+   styleBrown[DocumentApp.Attribute.FONT_FAMILY] = 'Courier New';
+   styleBrown[DocumentApp.Attribute.FONT_SIZE] = 10;
+   styleBrown[DocumentApp.Attribute.BOLD] = true;
+   styleBrown[DocumentApp.Attribute.UNDERLINE] = false;
+   
+   var styleGreen = {};
+   styleGreen[DocumentApp.Attribute.FOREGROUND_COLOR] = '#008000';
+   DocumentApp.HorizontalAlignment.RIGHT;
+   styleGreen[DocumentApp.Attribute.FONT_FAMILY] = 'Courier New';
+   styleGreen[DocumentApp.Attribute.FONT_SIZE] = 10;
+   styleGreen[DocumentApp.Attribute.BOLD] = true;
+   styleGreen[DocumentApp.Attribute.UNDERLINE] = false;
+
+
+
+   var currentString, text;
+   var arrKeyWords = getKeyWords();
+   var arrKeySymbols = getKeySymbols();
+   for (var i = 0; i < elements.length; i++) { // цикл по строкам текста
+     var element = elements[i];
+   
+     if (element.getElement().editAsText) {
+       var Sourcetext = element.getElement().editAsText();
+       currentString = Sourcetext.getText();
+      
+       if (currentString.length < 1 ) continue;
+       text = tableParagraph.appendText(currentString+"\n");
+          
+       
+       text.setAttributes(0, currentString.length-1, styleBlue);  
+       
+        currentString = currentString.toLowerCase();
+       for (var j = 0; j < arrKeyWords.length; j++) { // цикл по ключевым словам
+         var pos = 0;
+         while (true) {
+           var foundPos = currentString.indexOf(arrKeyWords[j],pos);
+           if (foundPos >= 0){ 
+                  
+             if (((foundPos == 0) || (isSymbolDiv(currentString[foundPos-1]))) && (((currentString.length == foundPos+arrKeyWords[j].length) || isSymbolDiv(currentString[foundPos+arrKeyWords[j].length])))) {
+           
+               text.setAttributes(foundPos, foundPos+arrKeyWords[j].length-1, styleRed);
+             }
+             pos = foundPos + 1; // продолжить поиск со следующей
+           } else {
+             break;
+           }
+        
+         }
+       }
+       
+       
+       for (var j = 0; j < arrKeySymbols.length; j++) { // цикл по ключевым символам
+         var pos = 0;
+         while (true) {
+           var foundPos = currentString.indexOf(arrKeySymbols[j],pos);
+           if (foundPos >= 0){ 
+ 
+
+             text.setAttributes(foundPos, foundPos+arrKeySymbols[j].length-1, styleRed);
+             
+             pos = foundPos + 1; // продолжить поиск со следующей
+           } else {
+             break;
+           }
+        
+         }
+       }
+       
+       // здесь ищем черный текст
+       
+       var str1 = currentString.replace(new RegExp('""','g'),'  ');
+ 
+   
+       var foundPos = str1.indexOf("|",0); // ищем палочку и следующую кавычку
+       var firstString = "";
+       var lastString = "";
+       var dislocationArr = [];
+       var blueZoneArray = [];
+       var dislocationArr2 = [];
+       var blueZoneArray2 = [];
+       if (foundPos >= 0){ 
+         if (foundPos > 0){
+           dislocationArr[blueZoneArray.length] = 0;
+           blueZoneArray[blueZoneArray.length] = str1.substring(0 ,foundPos);
+           
+         }
+         var endPos = str1.indexOf('"',foundPos + 1);
+         if (endPos < 0){ 
+           
+           endPos = str1.length-1;
+           
+         } else {
+           dislocationArr[blueZoneArray.length] = endPos; // +1 ??????????
+           blueZoneArray[blueZoneArray.length] = str1.substring(endPos+1 ,str1.length-1);
+           
+         }
+         text.setAttributes(foundPos, endPos, styleBlack);
+            
+       } else {
+         dislocationArr[blueZoneArray.length] = 0;
+         blueZoneArray[blueZoneArray.length] = str1;
+       }
+   
+       for (var j = 0; j < blueZoneArray.length; j++) {
+   
+         
+        findBlackText(blueZoneArray[j], text, styleBlack, blueZoneArray2, dislocationArr[j], dislocationArr2);
+       
+       }
+     
+       // когда уже нет открывающих кавычек, ищем любые, а также значки /\|"#@, они делают черным слово, внутри которого находятся,
+       // от разделителя до разделителя
+  
+       
+       var arrBlackSym = getBlackSym();
+       
+       for (var j = 0; j < blueZoneArray2.length; j++) {
+         
+         var pos = 0;
+               
+         for (var k = 0; k < arrBlackSym.length; k++) {
+           
+           while (true){
+           
+             var foundPos = blueZoneArray2[j].indexOf(arrBlackSym[k],pos);
+             if (foundPos >= 0){
+              
+               var arrPos = getThisWord(blueZoneArray2[j], foundPos);
+ 
+               var p1 = arrPos[0]+dislocationArr2[j]+1;
+               var p2 = arrPos[1]+dislocationArr2[j]-1;
+
+              
+               text.setAttributes(p1, p2, styleBlack);
+               
+               pos = foundPos + 1;
+             } else {
+               break;
+             }
+           }
+           
+           
+         }
+
+         
+       }
+       // Теперь еще найдем удаленные в начале двойные кавычки и тоже их сделаем черными
+       var pos = 0;
+       while (true) {
+           var foundPos = currentString.indexOf('""',pos);
+           if (foundPos >= 0){ 
+                  
+               text.setAttributes(foundPos, foundPos+1, styleBlack);
+             pos = foundPos + 1; // продолжить поиск со следующей
+           } else {
+             break;
+           }
+        
+         }
+
+       
+       var spaceFree = cutSpaces(currentString);
+       var foundPos = spaceFree.indexOf("#",0); // ищем команды разметки
+       
+       if ((foundPos == 0)||((foundPos>0)&&(spaceFree[foundPos-1] =="\n"))){ 
+         var foundPos = currentString.indexOf("#",0);
+         text.setAttributes(foundPos, currentString.length-1, styleBrown);
+             
+       }
+  
+       var foundPos = spaceFree.indexOf("&",0); // ищем директивы препроцессора
+        
+       if ((foundPos == 0)||((foundPos>0)&&(spaceFree[foundPos-1] =="\n"))){ 
+         var foundPos = currentString.indexOf("&",0);
+         text.setAttributes(foundPos, currentString.length-1, styleBrown);
+             
+       }
+       
+       var foundPos = currentString.indexOf("//",0); // ищем комментарии
+       if (foundPos >= 0){ 
+         
+           text.setAttributes(foundPos, currentString.length-1, styleGreen);
+             
+       }
+       
+       }
+     
+     }
+  }
+
+}
