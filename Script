@@ -70,7 +70,8 @@ function getKeyWords() {
     arrKeyWords[27] = "не";
     arrKeyWords[28] = "перейти";
     arrKeyWords[29] = "продолжить";
-    arrKeyWords[30] = "вызватьисключение";
+    arrKeyWords[30] = "вызватьисключение";    
+	arrKeyWords[31] = "из";
   
   return arrKeyWords;  
 }
